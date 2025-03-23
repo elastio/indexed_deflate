@@ -11,13 +11,16 @@ The index is saved to disk and can be reused for any subsequent processing of th
 
 Decompression is implemented with the pure-Rust [`miniz_oxide`](https://crates.io/crates/miniz_oxide).
 
-# Memory
+## Performance
 
-With the default configuration, the index file will be up to 3% of the size of the input file.
-Only a small map of file offsets is stored in RAM, roughly 0.003% of the size of the input file.
-This minimises the startup cost when a process only wants to use a small part of the index.
+With the default configuration, the index file stored on disk will be up to 3% of the size of the input file.
+Only a small map of file offsets is stored in RAM, roughly 0.003% of the size of the input.
 
-# Usage
+This minimises the startup cost when a process only wants to use a small part of the index:
+the total time to open, seek and start reading is only a few milliseconds, even if the input
+file is many GBs.
+
+## Usage
 
 An example implementing random access to `.tar.gz` files:
 

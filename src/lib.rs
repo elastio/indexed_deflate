@@ -24,30 +24,6 @@
 //! This also allows a multi-threaded application to create multiple readers over the same file,
 //! allowing parallel decompression of different sections of the file, with only a small RAM cost.
 //!
-//! # Backward compatibility
-//!
-//! Currently there are no compatibility guarantees for the index file format.
-//! If the format changes incompatibly, the decoder will reject it with
-//! [`Error::IndexIncompatibleVersion`] and you must rebuild the index.
-//!
-//! # DEFLATE block sizes
-//!
-//! To avoid having to store the entire decompressor state in the index file (including Huffman
-//! trees etc), we only create access points at the boundaries between DEFLATE blocks.
-//! If the blocks are large relative to the requested `AccessPointSpan` (default 1MB), this may
-//! significantly increase the spacing of access points.
-//!
-//! Experiments indicate that GNU Gzip (the standard command-line `gzip`) and
-//! `miniz_oxide` have a maximum block size of roughly 64KB compressed, so they should not
-//! be a problem.
-//! (Uncompressed blocks may be several MB, but access points are based on compressed size.)
-//!
-//! `libdeflate` has a maximum block size of roughly 300KB uncompressed
-//! (under its default configuration).
-//! `zopfli` has a maximum block size of roughly 1MB uncompressed (default).
-//! That will make our index less efficient; but these implementations are explicitly not designed for
-//! compressing very large files, so you are less likely to encounter them in this context.
-//!
 //! # Examples
 //!
 //! ## Basic usage
@@ -154,6 +130,42 @@
 //!     Ok(())
 //! }
 //! ```
+//!
+//! # Other considerations
+//!
+//! ## Backward compatibility
+//!
+//! Currently there are no compatibility guarantees for the index file format.
+//! If the format changes incompatibly, the decoder will reject it with
+//! [`Error::IndexIncompatibleVersion`] and you must rebuild the index.
+//!
+//! ## DEFLATE block sizes
+//!
+//! To avoid having to store the entire decompressor state in the index file (including Huffman
+//! trees etc), we only create access points at the boundaries between DEFLATE blocks.
+//! If the blocks are large relative to the requested `AccessPointSpan` (default 1MB), this may
+//! significantly increase the spacing of access points.
+//!
+//! Experiments indicate that GNU Gzip (the standard command-line `gzip`) and
+//! `miniz_oxide` have a maximum block size of roughly 64KB compressed, so they should not
+//! be a problem.
+//! (Uncompressed blocks may be several MB, but access points are based on compressed size.)
+//!
+//! `libdeflate` has a maximum block size of roughly 300KB uncompressed
+//! (under its default configuration).
+//! `zopfli` has a maximum block size of roughly 1MB uncompressed (default).
+//! That will make our index less efficient; but these implementations are explicitly not designed for
+//! compressing very large files, so you are less likely to encounter them in this context.
+//!
+//! ## Errors
+//!
+//! If any API returns a `std::io::Error`, it is likely that the internal state will be corrupted
+//! (losing track of its position in the input files, etc). Do not try to recover and reuse the
+//! object -- drop it and start again.
+//!
+//! When decoding, there is no mechanism to detect whether the index file corresponds to the
+//! compressed input file. Loading a mismatched index file may result in errors or corrupted
+//! output.
 
 use std::io::{Read, Seek, Write};
 
