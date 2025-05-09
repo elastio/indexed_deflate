@@ -766,12 +766,7 @@ where
         let window_compressed_size =
             u16::try_from(window_compressed.len()).expect("compressed window too large");
 
-        let num_bits = self
-            .common
-            .decomp
-            .get_block_boundary_state()
-            .unwrap()
-            .num_bits;
+        let num_bits = self.common.decomp.block_boundary_state().unwrap().num_bits;
 
         // If the next block depends on some buffered bits from the previous input
         // byte, we'll re-read that byte when resuming, to avoid having to store buf_bit

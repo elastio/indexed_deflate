@@ -8,7 +8,7 @@ readme = "README.md"
 
 [dependencies]
 gzip-header = "1.0.0"
-miniz_oxide = { version = "0.8.5" }
+miniz_oxide = { version = "0.8.8", features = ["block-boundary"] }
 thiserror = "2.0.12"
 
 [dev-dependencies]
