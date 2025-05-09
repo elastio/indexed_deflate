@@ -2,9 +2,12 @@
 name = "indexed_deflate"
 version = "0.1.0"
 edition = "2021"
-authors = ["Philip Taylor <philip@zaynar.co.uk>"]
 license = "MIT OR Apache-2.0"
+description = "Gzip/Zlib/DEFLATE decoder with efficient random access."
 readme = "README.md"
+repository = "https://github.com/zaynar/indexed_deflate"
+keywords = ["gzip", "zlib", "deflate"]
+categories = ["compression"]
 
 [dependencies]
 gzip-header = "1.0.0"
