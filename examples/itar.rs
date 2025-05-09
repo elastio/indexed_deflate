@@ -12,7 +12,7 @@ use indexed_deflate::{AccessPointSpan, GzDecoder, GzIndexBuilder, Result};
 
 #[derive(Parser, Debug)]
 struct Cli {
-    /// Whether to build a new index (will be saved to --gz path with added ".index" suffix)
+    /// Whether to build a new index (will be saved to gz path with added ".index" suffix)
     #[arg(long)]
     build: bool,
 
@@ -22,7 +22,7 @@ struct Cli {
     /// A file to extract from the tarball
     extract: Option<String>,
 
-    /// Output filename for extracted file
+    /// Output filename for extracted file (default is stdout)
     #[arg(long)]
     output: Option<std::path::PathBuf>,
 }
@@ -88,24 +88,24 @@ fn main() -> Result<()> {
     });
 
     if cli.build {
-        println!("Building index from {}", cli.input.to_string_lossy());
+        eprintln!("Building index from {}", cli.input.to_string_lossy());
 
         let start = Instant::now();
         build_tar_index(&cli.input, &index_path)?;
-        println!("Built index in {:.3} secs", start.elapsed().as_secs_f64());
+        eprintln!("Built index in {:.3} secs", start.elapsed().as_secs_f64());
     }
 
     if let Some(extract) = cli.extract {
         let start = Instant::now();
         let file = use_tar_index(&cli.input, &index_path, &extract)?;
-        println!(
+        eprintln!(
             "Read {} in {:.3} secs",
             extract,
             start.elapsed().as_secs_f64()
         );
 
         if let Some(output) = cli.output {
-            println!("Writing {} to {}", extract, output.to_string_lossy());
+            eprintln!("Writing {} to {}", extract, output.to_string_lossy());
             let mut output = File::create(output)?;
             output.write_all(&file)?;
         } else {
