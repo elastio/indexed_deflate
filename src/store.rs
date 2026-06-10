@@ -137,7 +137,7 @@ impl Window {
 /// [`Error::Callback`](crate::Error::Callback) from constructors / `finish`, and
 /// (because `std::io::{Read, Seek}` force `io::Error`) wrapped inside an
 /// `io::Error` from `read`/`seek`, where it can be recovered with
-/// [`io::Error::get_ref`]/`downcast`.
+/// [`std::io::Error::get_ref`]/`downcast`.
 pub trait IndexStorage {
     /// Error type returned by this backend's operations.
     type Error: std::error::Error + Send + Sync + 'static;
@@ -192,9 +192,8 @@ fn encode_window(raw: Vec<u8>, format: WindowFormat) -> Window {
 fn decode_window(window: Window) -> std::io::Result<Vec<u8>> {
     match window {
         Window::Raw(bytes) => Ok(bytes),
-        Window::Deflate(bytes) => {
-            decompress_to_vec(&bytes).map_err(|_| std::io::Error::other("error decompressing window"))
-        }
+        Window::Deflate(bytes) => decompress_to_vec(&bytes)
+            .map_err(|_| std::io::Error::other("error decompressing window")),
     }
 }
 

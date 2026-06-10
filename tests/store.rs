@@ -5,8 +5,8 @@ use std::{
 };
 
 use indexed_deflate::{
-    AccessPoint, AccessPointSpan, GzStoreDecoder, GzStoreIndexBuilder, IndexStorage, Result, Window,
-    WindowFormat,
+    AccessPoint, AccessPointSpan, GzStoreDecoder, GzStoreIndexBuilder, IndexStorage, Result,
+    Window, WindowFormat,
 };
 use rand::{seq::SliceRandom, RngCore, SeedableRng};
 use sha2::{Digest, Sha256};
@@ -42,7 +42,10 @@ impl IndexStorage for MemStore {
     fn append(&self, point: &AccessPoint, window: &Window) -> std::result::Result<(), MemError> {
         let mut points = self.points.lock().unwrap();
         if let Some((last, _)) = points.last() {
-            assert!(point.out_pos > last.out_pos, "points must be appended in order");
+            assert!(
+                point.out_pos > last.out_pos,
+                "points must be appended in order"
+            );
         }
         points.push((*point, window.clone()));
         Ok(())
@@ -157,7 +160,10 @@ fn store_read_while_building() -> Result<()> {
         assert_eq!(buf, data_random(i));
     }
     let points_so_far = store.points.lock().unwrap().len();
-    assert!(points_so_far > 1, "expected several access points to exist mid-build");
+    assert!(
+        points_so_far > 1,
+        "expected several access points to exist mid-build"
+    );
 
     // A SEPARATE decoder, sharing the store, seeks into the already-built region.
     {

@@ -412,8 +412,8 @@ impl<G> Engine<G> {
     pub(crate) fn current_window(&self) -> Vec<u8> {
         (0..WINDOW_SIZE)
             .map(|i| {
-                self.output[((self.output_dec + OUTPUT_BUF_SIZE - WINDOW_SIZE + i) % OUTPUT_BUF_SIZE)
-                    as usize]
+                self.output[((self.output_dec + OUTPUT_BUF_SIZE - WINDOW_SIZE + i)
+                    % OUTPUT_BUF_SIZE) as usize]
             })
             .collect()
     }

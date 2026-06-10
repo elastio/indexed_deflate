@@ -490,7 +490,11 @@ macro_rules! create_store_interface {
     };
 }
 
-create_store_interface!(DeflateStoreDecoder, DeflateStoreIndexBuilder, Wrapper::Deflate);
+create_store_interface!(
+    DeflateStoreDecoder,
+    DeflateStoreIndexBuilder,
+    Wrapper::Deflate
+);
 create_store_interface!(GzStoreDecoder, GzStoreIndexBuilder, Wrapper::Gzip);
 create_store_interface!(ZlibStoreDecoder, ZlibStoreIndexBuilder, Wrapper::Zlib);
 
