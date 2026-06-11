@@ -524,8 +524,13 @@ fn file_load_window<I: Read + Seek>(
     ))?;
     index_stream.read_exact(&mut window)?;
 
-    miniz_oxide::inflate::decompress_to_vec(&window)
-        .map_err(|_| std::io::Error::other("error decompressing index window"))
+    let window = miniz_oxide::inflate::decompress_to_vec(&window)
+        .map_err(|_| std::io::Error::other("error decompressing index window"))?;
+    if window.len() != WINDOW_SIZE as usize {
+        return Err(std::io::Error::other("index window had incorrect size"));
+    }
+
+    Ok(window)
 }
 
 impl<G, I> ReadDecoder<G> for BaseDecoder<G, I>
@@ -847,7 +852,9 @@ where
         let target = match pos {
             SeekFrom::Start(n) => n,
             SeekFrom::End(n) => (self.get_gz_len()? as i64 + n) as u64,
-            SeekFrom::Current(n) => (self.engine().output_ret as i64 + n) as u64,
+            SeekFrom::Current(n) => {
+                (i64::try_from(self.engine().output_ret).map_err(std::io::Error::other)? + n) as u64
+            }
         };
 
         // If the target is already inside output_buf, we can jump there directly

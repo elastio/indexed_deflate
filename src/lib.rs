@@ -373,9 +373,8 @@ macro_rules! create_store_interface {
         /// to allow fast seeking.
         ///
         /// Unlike the file-backed decoder, this can read an index that is still
-        /// being built (by a [`
-        #[doc = stringify!($builder)]
-        /// `] sharing the same store): there is no `finish()` to wait for, since
+        #[doc = concat!("/// being built (by a [`", stringify!($builder), "`] \
+         sharing the same store): there is no `finish()` to wait for, since")]
         /// access points become usable as soon as they are appended. If you only
         /// read forwards from the start, no access points are needed at all.
         pub struct $decoder<C, S> {
