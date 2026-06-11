@@ -190,11 +190,17 @@ fn encode_window(raw: Vec<u8>, format: WindowFormat) -> Window {
 
 /// Decode a stored [`Window`] back into a raw 32KB window for the engine.
 fn decode_window(window: Window) -> std::io::Result<Vec<u8>> {
-    match window {
-        Window::Raw(bytes) => Ok(bytes),
+    let window = match window {
+        Window::Raw(bytes) => bytes,
         Window::Deflate(bytes) => decompress_to_vec(&bytes)
-            .map_err(|_| std::io::Error::other("error decompressing window")),
+            .map_err(|_| std::io::Error::other("error decompressing window"))?,
+    };
+
+    if window.len() != WINDOW_SIZE as usize {
+        return Err(std::io::Error::other("invalid window length"));
     }
+
+    Ok(window)
 }
 
 /// Wrap a backend error as an `io::Error` carrying [`Error::Callback`], for use
