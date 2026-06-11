@@ -170,8 +170,12 @@
 use std::io::{Read, Seek, Write};
 
 use base::{BaseDecoder, BaseIndexBuilder, ReadDecoder, SeekDecoder, Wrapper};
+use store::{BaseStoreBuilder, BaseStoreDecoder};
 
 mod base;
+mod store;
+
+pub use store::{AccessPoint, IndexStorage, Window, WindowFormat};
 
 #[derive(thiserror::Error, Debug)]
 pub enum Error {
@@ -183,6 +187,9 @@ pub enum Error {
     IndexUnfinished,
     #[error("index file version is incompatible")]
     IndexIncompatibleVersion,
+    /// An [`IndexStorage`] callback returned an error.
+    #[error("index storage callback failed")]
+    Callback(#[source] Box<dyn std::error::Error + Send + Sync>),
 }
 
 pub type Result<T> = std::result::Result<T, Error>;
@@ -353,6 +360,158 @@ impl<C, I> GzIndexBuilder<C, I>
 where
     C: Read,
     I: Write + Seek,
+{
+    /// Returns the gzip header associated with this stream.
+    pub fn header(&self) -> Option<gzip_header::GzHeader> {
+        self.base.header()
+    }
+}
+
+macro_rules! create_store_interface {
+    ($decoder:ident, $builder:ident, $wrapper:expr) => {
+        /// Decompresses the input file, using a pluggable [`IndexStorage`] backend
+        /// to allow fast seeking.
+        ///
+        /// Unlike the file-backed decoder, this can read an index that is still
+        #[doc = concat!("/// being built (by a [`", stringify!($builder), "`] \
+         sharing the same store): there is no `finish()` to wait for, since")]
+        /// access points become usable as soon as they are appended. If you only
+        /// read forwards from the start, no access points are needed at all.
+        pub struct $decoder<C, S> {
+            base: BaseStoreDecoder<C, S>,
+        }
+
+        impl<C, S> $decoder<C, S>
+        where
+            C: Read + Seek,
+            S: IndexStorage,
+        {
+            /// Creates a new decoder over `compressed`, querying `store` for
+            /// access points and windows.
+            pub fn new(compressed: C, store: S) -> Result<Self> {
+                Ok(Self {
+                    base: BaseStoreDecoder::new(compressed, store, $wrapper)?,
+                })
+            }
+
+            /// Returns a reference to the underlying storage backend.
+            pub fn store(&self) -> &S {
+                self.base.store()
+            }
+        }
+
+        impl<C, S> Read for $decoder<C, S>
+        where
+            C: Read,
+            S: IndexStorage,
+        {
+            fn read(&mut self, buf: &mut [u8]) -> std::io::Result<usize> {
+                self.base.read(buf)
+            }
+        }
+
+        impl<C, S> Seek for $decoder<C, S>
+        where
+            C: Read + Seek,
+            S: IndexStorage,
+        {
+            fn seek(&mut self, pos: std::io::SeekFrom) -> std::io::Result<u64> {
+                self.base.seek(pos)
+            }
+        }
+
+        /// Decompresses the input file and builds an index into a pluggable
+        /// [`IndexStorage`] backend, to allow fast seeking with the corresponding
+        /// decoder type.
+        ///
+        /// This implements `Read` to return the decompressed data, and `Seek`
+        /// (using the partially-built index) when `C: Read + Seek`.
+        ///
+        /// Each access point is handed to [`IndexStorage::append`] as it is
+        /// produced, so the index is usable immediately and concurrently — there
+        /// is no buffered points table that only lands at the end. The index will
+        /// only extend up to the furthest byte of `compressed` that was read or
+        /// seeked to.
+        pub struct $builder<C, S> {
+            base: BaseStoreBuilder<C, S>,
+        }
+
+        impl<C, S> $builder<C, S>
+        where
+            C: Read,
+            S: IndexStorage,
+        {
+            /// Creates a new index builder reading `compressed` and persisting
+            /// access points/windows to `store`. `window_format` selects how the
+            /// 32KB windows this builder produces are encoded.
+            pub fn new(
+                compressed: C,
+                store: S,
+                span: AccessPointSpan,
+                window_format: WindowFormat,
+            ) -> Result<Self> {
+                Ok(Self {
+                    base: BaseStoreBuilder::new(compressed, store, span, window_format, $wrapper)?,
+                })
+            }
+
+            /// Invokes [`IndexStorage::finalize`] on the backend. Optional: a
+            /// decoder does not require this to have been called.
+            pub fn finish(self) -> Result<()> {
+                self.base.finish()
+            }
+
+            /// Returns a reference to the underlying storage backend.
+            pub fn store(&self) -> &S {
+                self.base.store()
+            }
+        }
+
+        impl<C, S> Read for $builder<C, S>
+        where
+            C: Read,
+            S: IndexStorage,
+        {
+            fn read(&mut self, buf: &mut [u8]) -> std::io::Result<usize> {
+                self.base.read(buf)
+            }
+        }
+
+        impl<C, S> Seek for $builder<C, S>
+        where
+            C: Read + Seek,
+            S: IndexStorage,
+        {
+            fn seek(&mut self, pos: std::io::SeekFrom) -> std::io::Result<u64> {
+                self.base.seek(pos)
+            }
+        }
+    };
+}
+
+create_store_interface!(
+    DeflateStoreDecoder,
+    DeflateStoreIndexBuilder,
+    Wrapper::Deflate
+);
+create_store_interface!(GzStoreDecoder, GzStoreIndexBuilder, Wrapper::Gzip);
+create_store_interface!(ZlibStoreDecoder, ZlibStoreIndexBuilder, Wrapper::Zlib);
+
+impl<C, S> GzStoreDecoder<C, S>
+where
+    C: Read,
+    S: IndexStorage,
+{
+    /// Returns the gzip header associated with this stream.
+    pub fn header(&self) -> Option<gzip_header::GzHeader> {
+        self.base.header()
+    }
+}
+
+impl<C, S> GzStoreIndexBuilder<C, S>
+where
+    C: Read,
+    S: IndexStorage,
 {
     /// Returns the gzip header associated with this stream.
     pub fn header(&self) -> Option<gzip_header::GzHeader> {
